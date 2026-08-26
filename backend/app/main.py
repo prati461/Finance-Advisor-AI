@@ -77,4 +77,5 @@ def health():
         "status": "ok"
     }
 
+
 app = create_app()
