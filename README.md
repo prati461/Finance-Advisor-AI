@@ -1,0 +1,107 @@
+# AI-Powered Personal Finance & Investment Advisor
+
+## Running the application
+
+The repository contains the existing FastAPI backend and React/Vite frontend. Market analytics use Yahoo Finance through `yfinance`, with the local cache used when live data is unavailable. LLM features are optional and fall back to the deterministic analytics assistant.
+
+## Repository layout
+
+- `backend/`
+  - `app/` - application factory and runtime entrypoint
+  - `api/v1/` - versioned API routers planned for REST endpoints
+  - `core/` - configuration, logging, security utilities, exceptions
+  - `database/` - SQLAlchemy setup, database sessions, migrations
+  - `domain/` - business entities and domain logic boundaries
+  - `models/` - ORM models and persistence schema definitions
+  - `repositories/` - repository pattern for data access abstraction
+  - `schemas/` - Pydantic request and response schemas
+  - `services/` - business service layer and orchestration
+  - `ml/` - machine learning pipelines, model workflows, and inference
+  - `utils/` - shared utilities and helpers
+  - `tests/` - structured unit and integration tests
+- `datasets/`
+  - `raw/` - raw source datasets (ignored in version control)
+  - `processed/` - cleaned and feature-engineered artifact outputs
+  - `external/` - third-party reference or external enrichment data
+  - `trained_models/` - serialized model artifacts (ignored in version control)
+- `docs/` - architecture, design, and project roadmap documentation
+- `scripts/` - automation scripts for data preparation, training, deployment
+- `notebooks/` - exploratory data science and model experiments
+- `frontend/` - placeholder for future React frontend assets
+
+## Configuration
+
+Copy `.env.example` to `.env` and replace `JWT_SECRET_KEY` with a long random value. Keep `.env` out of source control. For a separately hosted frontend, copy `frontend/.env.example` to `frontend/.env` and set `VITE_API_URL` to the deployed API's `/api/v1` URL.
+
+## Local development
+
+Backend:
+
+```bash
+python -m pip install -r requirements.txt
+copy .env.example .env
+python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000
+```
+
+Frontend, in a second terminal:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Open `http://localhost:3000`; API documentation is at `http://127.0.0.1:8000/docs`.
+
+## Production deployment
+
+Set a production `DATABASE_URL`, `JWT_SECRET_KEY`, `CORS_ORIGINS`, and any optional provider keys through the deployment secret manager. Build the frontend with `npm run build` and serve `frontend/dist` with a static host. Run the backend with:
+
+```bash
+python -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000
+```
+
+The included `docker-compose.yml` starts the backend with PostgreSQL; create a local `.env` first, then run `docker compose up --build`.
+
+## Data isolation
+
+Income, expense, budget, advisor-result, prediction, and chat records carry a foreign-key `user_id`. Protected routes derive that ID from the validated JWT; repository queries scope reads and writes to the authenticated user.
+
+## Dataset review summary
+
+Three dataset sources were analyzed:
+
+1. **Global India Markets Macro**
+   - `daily_market_data.csv`: daily market and commodity indicators for time-series forecasting
+   - `monthly_macro_data.csv`: monthly macroeconomic series for feature enrichment and long-term forecasts
+2. **Synthetic Personal Finance**
+   - `synthetic_personal_finance_dataset.csv`: user financial profiles for risk scoring and investment recommendation
+3. **House Price India**
+   - `House Price India.csv`: housing attributes and price target for real estate value prediction
+
+## Next steps
+
+1. Approve the Phase 0 architecture and structure
+2. Begin Phase 1 with backend scaffolding and package implementation
+3. Add database models, repository patterns, and service layers
+4. Implement authentication and user profile features
+5. Develop ML preprocessing and model integration after data engineering is finalized
+
+## How to run the backend
+
+1. Install dependencies:
+   ```bash
+   python -m pip install -r requirements.txt
+   ```
+2. Create a local `.env` file based on `.env.example`.
+3. Start the backend:
+   ```bash
+   python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000
+   ```
+4. Open Swagger UI at `http://127.0.0.1:8000/docs`
+
+## Available development endpoints
+
+- Health check: `GET /api/v1/health`
+- Version: `GET /api/v1/version`
+- Swagger: `GET /docs`

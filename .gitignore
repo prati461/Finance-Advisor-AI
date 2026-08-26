@@ -1,0 +1,58 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.python-version
+env/
+venv/
+.venv/
+ENV/
+pip-wheel-metadata/
+htmlcov/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info
+.eggs/
+
+# Python environment
+.env
+.env.*
+
+# Test
+.pytest_cache/
+
+# SQLite and local databases
+*.sqlite3
+*.db
+*.db-journal
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE and editor
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# Dataset and trained artifacts (don't commit raw data or models)
+datasets/raw/*
+!datasets/raw/.gitkeep
+datasets/processed/*
+!datasets/processed/.gitkeep
+datasets/trained_models/*
+!datasets/trained_models/.gitkeep
+
+# Docker
+.dockerignore
+backend/logs/
