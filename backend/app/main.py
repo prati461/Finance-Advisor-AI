@@ -71,5 +71,10 @@ def _ensure_compatible_schema() -> None:
             if name not in columns:
                 connection.execute(text(f"ALTER TABLE users ADD COLUMN {name} {definition}"))
 
+@app.get("/health")
+def health():
+    return {
+        "status": "ok"
+    }
 
 app = create_app()
