@@ -25,3 +25,4 @@ yfinance==0.2.54
 google-genai
 redis==5.2.1
 pymysql
+protobuf>=5.28.0,<6
