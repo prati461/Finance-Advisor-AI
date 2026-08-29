@@ -1,4 +1,5 @@
 import fastapi
+import time
 from fastapi import FastAPI, HTTPException, status
 from fastapi.responses import JSONResponse
 from starlette.middleware.cors import CORSMiddleware
@@ -8,7 +9,7 @@ from backend.api import api_router
 from backend.core.config import settings
 from backend.core.logging import configure_logging, logger
 from backend.core.exceptions import AppException
-from backend.database import engine
+from backend.database import check_database_connection, engine
 from backend.models import Base
 
 
@@ -38,14 +39,24 @@ def create_app() -> FastAPI:
     @app.on_event("startup")
     def startup_event() -> None:
         logger.info("Starting Finance Advisor API")
-        try:
-            Base.metadata.create_all(bind=engine)
-            _ensure_compatible_schema()
-            app.state.database_ready = True
-        except Exception:
-            logger.exception("Database initialization failed")
-            if settings.environment.strip().lower() in {"production", "prod"}:
-                raise
+        max_attempts = 5
+        for attempt in range(1, max_attempts + 1):
+            try:
+                check_database_connection()
+                Base.metadata.create_all(bind=engine)
+                _ensure_compatible_schema()
+                check_database_connection()
+                app.state.database_ready = True
+                logger.info("Database initialized")
+                return
+            except Exception:
+                app.state.database_ready = False
+                engine.dispose()
+                if attempt == max_attempts:
+                    logger.exception("Database initialization failed after %s attempts", max_attempts)
+                    return
+                logger.warning("Database initialization attempt %s/%s failed; retrying", attempt, max_attempts)
+                time.sleep(2)
 
     @app.on_event("shutdown")
     def shutdown_event() -> None:
