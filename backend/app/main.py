@@ -38,6 +38,8 @@ def create_app() -> FastAPI:
 
     @app.on_event("startup")
     def startup_event() -> None:
+        logger.info("Application module: backend.app.main")
+        logger.info("Registered routes: %s", sorted(route.path for route in app.routes))
         logger.info("Starting Finance Advisor API")
         max_attempts = 5
         for attempt in range(1, max_attempts + 1):
@@ -69,12 +71,24 @@ def create_app() -> FastAPI:
             content={"detail": exc.detail},
         )
 
+    @app.get("/", include_in_schema=False)
+    def root() -> dict:
+        return {"service": "finance-advisor-ai", "status": "ok"}
+
     @app.get("/health", include_in_schema=False)
     def health() -> dict:
         """Deployment health check, available without the API version prefix."""
         if not app.state.database_ready:
             raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Database is not ready")
-        return {"status": "ok"}
+        return {"service": "finance-advisor-ai", "status": "ok"}
+
+    @app.get("/__deployment_check", include_in_schema=False)
+    def deployment_check() -> dict:
+        return {
+            "service": "finance-advisor-ai",
+            "version": "f3da701",
+            "routes": sorted(route.path for route in app.routes),
+        }
 
     return app
 
