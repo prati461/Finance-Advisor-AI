@@ -20,6 +20,8 @@ dist/
 # Python environment
 .env
 .env.*
+!.env.example
+!frontend/.env.example
 
 # Test
 .pytest_cache/

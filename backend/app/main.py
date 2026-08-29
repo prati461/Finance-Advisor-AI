@@ -1,5 +1,5 @@
 import fastapi
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, status
 from fastapi.responses import JSONResponse
 from starlette.middleware.cors import CORSMiddleware
 from sqlalchemy import inspect, text
@@ -43,7 +43,9 @@ def create_app() -> FastAPI:
             _ensure_compatible_schema()
             app.state.database_ready = True
         except Exception:
-            logger.exception("Database initialization failed; API will remain available")
+            logger.exception("Database initialization failed")
+            if settings.environment.strip().lower() in {"production", "prod"}:
+                raise
 
     @app.on_event("shutdown")
     def shutdown_event() -> None:
@@ -71,11 +73,12 @@ def _ensure_compatible_schema() -> None:
             if name not in columns:
                 connection.execute(text(f"ALTER TABLE users ADD COLUMN {name} {definition}"))
 
-@app.get("/health")
-def health():
-    return {
-        "status": "ok"
-    }
-
-
 app = create_app()
+
+
+@app.get("/health", include_in_schema=False)
+def health() -> dict:
+    """Deployment health check, available without the API version prefix."""
+    if not app.state.database_ready:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Database is not ready")
+    return {"status": "ok"}

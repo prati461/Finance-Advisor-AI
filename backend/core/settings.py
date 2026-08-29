@@ -1,11 +1,13 @@
-from pydantic import ConfigDict, field_validator
+from pydantic import ConfigDict, field_validator, model_validator
 from pydantic_settings import BaseSettings
+from sqlalchemy.engine import make_url
 
 
 class Settings(BaseSettings):
     app_name: str = "Finance Advisor API"
     api_v1_str: str = "/api/v1"
     version: str = "1.0.0"
+    environment: str = "development"
     debug: bool = False
     database_url: str = "sqlite:///./finance_advisor.db"
     jwt_secret_key: str = "CHANGE_ME_CHANGE_ME"
@@ -44,6 +46,34 @@ class Settings(BaseSettings):
             if normalized in {"development", "dev", "true", "1", "yes", "on"}:
                 return True
         return value
+
+    @field_validator("database_url")
+    @classmethod
+    def validate_database_url(cls, value: str) -> str:
+        """Accept SQLAlchemy URLs and select PyMySQL for MySQL connections."""
+        value = value.strip()
+        if value.startswith("mysql://"):
+            value = f"mysql+pymysql://{value.removeprefix('mysql://')}"
+
+        try:
+            url = make_url(value)
+        except Exception as exc:
+            raise ValueError(
+                "DATABASE_URL must be a valid SQLAlchemy URL. URL-encode special "
+                "characters in the username and password (for example @ as %40)."
+            ) from exc
+
+        if url.drivername.startswith("mysql") and url.drivername != "mysql+pymysql":
+            raise ValueError("MySQL DATABASE_URL must use the mysql+pymysql driver.")
+        if not (url.drivername.startswith("mysql") or url.drivername.startswith("sqlite")):
+            raise ValueError("DATABASE_URL must use MySQL (mysql+pymysql) or local SQLite.")
+        return value
+
+    @model_validator(mode="after")
+    def prevent_sqlite_in_production(self):
+        if self.environment.strip().lower() in {"production", "prod"} and self.database_url.startswith("sqlite"):
+            raise ValueError("SQLite is not allowed when ENVIRONMENT is production; configure Railway MySQL DATABASE_URL.")
+        return self
 
     model_config = ConfigDict(env_file=".env", env_file_encoding="utf-8")
 

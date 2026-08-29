@@ -55,13 +55,44 @@ Open `http://localhost:3000`; API documentation is at `http://127.0.0.1:8000/doc
 
 ## Production deployment
 
-Set a production `DATABASE_URL`, `JWT_SECRET_KEY`, `CORS_ORIGINS`, and any optional provider keys through the deployment secret manager. Build the frontend with `npm run build` and serve `frontend/dist` with a static host. Run the backend with:
+Use Railway MySQL for production storage; SQLite is supported only for local development. Set all production values through the host's secret manager—never commit a real connection string or API key.
 
-```bash
-python -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000
+### Railway MySQL URL
+
+```text
+mysql+pymysql://USER:PASSWORD@HOST:PORT/DATABASE
 ```
 
-The included `docker-compose.yml` starts the backend with PostgreSQL; create a local `.env` first, then run `docker compose up --build`.
+The username and password portions must be URL-encoded if they contain reserved characters. For example, `p@ss:word/1` becomes `p%40ss%3Aword%2F1`. Railway supplies the host, port, database, username, and password in its MySQL service variables.
+
+### Render backend settings
+
+- Runtime: Docker
+- Dockerfile path: `./Dockerfile`
+- Health check path: `/health`
+- Start command (when not using Docker): `uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT`
+- Required environment variables: `ENVIRONMENT=production`, `DATABASE_URL`, `JWT_SECRET_KEY`, and `CORS_ORIGINS=https://<your-vercel-project>.vercel.app`
+- Optional variables: `GEMINI_API_KEY`, `LLM_PROVIDER`, `LLM_MODEL`, `ALPHA_VANTAGE_API_KEY`, `REDIS_URL`
+
+Render owns `PORT`; do not set a fixed production port. The application creates missing tables at startup without dropping existing tables, so a redeploy/restart preserves data in Railway MySQL.
+
+### Vercel frontend settings
+
+- Root directory: `frontend`
+- Framework preset: Vite
+- Build command: `npm run build`
+- Output directory: `dist`
+- Environment variable: `VITE_API_URL=https://<your-render-service>.onrender.com/api/v1`
+
+`VITE_API_URL` is compiled into the browser bundle, so set it for the production Vercel environment and redeploy after changing it. The local Vite proxy remains available for development.
+
+Run the backend with:
+
+```bash
+uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
+```
+
+The included `docker-compose.yml` starts the backend with MySQL 8.4 for local container testing; create a local `.env` first, then run `docker compose up --build`.
 
 ## Data isolation
 
