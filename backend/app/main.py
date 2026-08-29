@@ -69,6 +69,13 @@ def create_app() -> FastAPI:
             content={"detail": exc.detail},
         )
 
+    @app.get("/health", include_in_schema=False)
+    def health() -> dict:
+        """Deployment health check, available without the API version prefix."""
+        if not app.state.database_ready:
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Database is not ready")
+        return {"status": "ok"}
+
     return app
 
 
@@ -85,11 +92,3 @@ def _ensure_compatible_schema() -> None:
                 connection.execute(text(f"ALTER TABLE users ADD COLUMN {name} {definition}"))
 
 app = create_app()
-
-
-@app.get("/health", include_in_schema=False)
-def health() -> dict:
-    """Deployment health check, available without the API version prefix."""
-    if not app.state.database_ready:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Database is not ready")
-    return {"status": "ok"}
