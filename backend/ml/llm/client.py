@@ -46,10 +46,12 @@ class LLMClient:
         """Lazily initialize the Gemini client."""
         if self._gemini is None and self.gemini_key:
             try:
-                import google.generativeai as genai
+                # ``google-genai`` is the package declared in requirements.txt.
+                # Keep the import lazy so an unset optional API key never affects
+                # application startup.
+                from google import genai
 
-                genai.configure(api_key=self.gemini_key)
-                self._gemini = genai
+                self._gemini = genai.Client(api_key=self.gemini_key)
             except Exception as exc:
                 logger.error("Failed to init Gemini: %s", exc)
                 self._gemini = None
@@ -88,14 +90,17 @@ class LLMClient:
     def _generate_gemini(
         self, prompt: str, system: Optional[str], max_tokens: int, temperature: float
     ) -> Optional[str]:
-        genai = self._get_gemini()
-        if not genai:
+        client = self._get_gemini()
+        if not client:
             return None
         try:
-            model = genai.GenerativeModel(self.gemini_model, system_instruction=system)
-            response = model.generate_content(
-                prompt,
-                generation_config=genai.types.GenerationConfig(
+            from google.genai import types
+
+            response = client.models.generate_content(
+                model=self.gemini_model,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction=system,
                     max_output_tokens=max_tokens,
                     temperature=temperature,
                 ),

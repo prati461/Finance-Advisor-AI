@@ -5,6 +5,7 @@ New AI endpoints for financial health, recommendations, predictions, and more.
 All routes use the authenticated user's data from the database.
 """
 
+from collections import defaultdict
 from datetime import date
 from typing import Optional
 
@@ -14,6 +15,8 @@ from sqlalchemy.orm import Session
 from backend.api.v1.dependencies import get_current_user, get_db_session
 from backend.models.user import User
 from backend.models.advisor import AdvisorRecord, AIConversation
+from backend.models.expense import Expense
+from backend.models.income import Income
 from pydantic import BaseModel, Field
 
 from backend.schemas.ai import (
@@ -296,18 +299,55 @@ def get_analytics(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db_session),
 ):
-    """Get financial analytics."""
-    # Placeholder - will be implemented later
+    """Return analytics derived only from the authenticated user's records."""
+    incomes = db.query(Income).filter(Income.user_id == current_user.id).all()
+    expenses = db.query(Expense).filter(Expense.user_id == current_user.id).all()
+
+    def period_label(value: date) -> str:
+        if request.period == "weekly":
+            iso = value.isocalendar()
+            return f"{iso.year}-W{iso.week:02d}"
+        if request.period == "yearly":
+            return str(value.year)
+        return value.strftime("%Y-%m")
+
+    income_by_period: dict[str, float] = defaultdict(float)
+    expense_by_period: dict[str, float] = defaultdict(float)
+    expense_by_category: dict[str, float] = defaultdict(float)
+    for income in incomes:
+        income_by_period[period_label(income.received_date)] += float(income.amount)
+    for expense in expenses:
+        expense_by_period[period_label(expense.spent_at)] += float(expense.amount)
+        expense_by_category[expense.category] += float(expense.amount)
+
+    labels = sorted(set(income_by_period) | set(expense_by_period))
+    income_trend = [{"label": label, "value": round(income_by_period[label], 2)} for label in labels]
+    expense_trend = [{"label": label, "value": round(expense_by_period[label], 2)} for label in labels]
+    savings_trend = [
+        {"label": label, "value": round(income_by_period[label] - expense_by_period[label], 2)}
+        for label in labels
+    ]
+    total_income = round(sum(income_by_period.values()), 2)
+    total_expense = round(sum(expense_by_period.values()), 2)
+    category_analysis = [
+        {
+            "category": category,
+            "total": round(total, 2),
+            "percentage": round((total / total_expense) * 100, 2) if total_expense else 0,
+            "trend": "not_available",
+        }
+        for category, total in sorted(expense_by_category.items(), key=lambda item: item[1], reverse=True)
+    ]
     return AnalyticsResponse(
         period=request.period,
-        total_income=0,
-        total_expense=0,
-        total_savings=0,
-        savings_rate=0,
-        income_trend=[],
-        expense_trend=[],
-        savings_trend=[],
-        category_analysis=[],
+        total_income=total_income,
+        total_expense=total_expense,
+        total_savings=round(total_income - total_expense, 2),
+        savings_rate=round(((total_income - total_expense) / total_income) * 100, 2) if total_income else 0,
+        income_trend=income_trend,
+        expense_trend=expense_trend,
+        savings_trend=savings_trend,
+        category_analysis=category_analysis,
     )
 
 
