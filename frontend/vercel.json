@@ -1,8 +1,40 @@
 {
   "rewrites": [
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "source": "/register",
+      "destination": "/"
+    },
+    {
+      "source": "/login",
+      "destination": "/"
+    },
+    {
+      "source": "/dashboard",
+      "destination": "/"
+    },
+    {
+      "source": "/analytics",
+      "destination": "/"
+    },
+    {
+      "source": "/reports",
+      "destination": "/"
+    },
+    {
+      "source": "/predictions",
+      "destination": "/"
+    },
+    {
+      "source": "/income",
+      "destination": "/"
+    },
+    {
+      "source": "/expenses",
+      "destination": "/"
+    },
+    {
+      "source": "/budgets",
+      "destination": "/"
     }
   ]
 }
