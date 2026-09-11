@@ -30,7 +30,13 @@ elif settings.database_url.startswith("sqlite"):
     # SQLite remains a local-development default only.
     engine_options["connect_args"] = {"check_same_thread": False}
 
-logger.info("Database: Creating engine for URL pattern: %s", settings.database_url[:50])
+try:
+    from sqlalchemy.engine import make_url
+    safe_db_url = make_url(settings.database_url).render_as_string(hide_password=True)
+except Exception:
+    safe_db_url = "configured"
+
+logger.info("Database: Creating engine for URL: %s", safe_db_url)
 engine = create_engine(settings.database_url, **engine_options)
 SessionLocal = sessionmaker(
     bind=engine,

@@ -140,7 +140,11 @@ try:
     
 finally:
     db.close()
+    engine.dispose()
     import os
     if os.path.exists("test_finance_advisor.db"):
-        os.remove("test_finance_advisor.db")
-        print("\n✓ Cleaned up test database")
+        try:
+            os.remove("test_finance_advisor.db")
+            print("\n✓ Cleaned up test database")
+        except Exception:
+            pass

@@ -38,26 +38,40 @@ def create_app() -> FastAPI:
 
     @app.on_event("startup")
     def startup_event() -> None:
+        try:
+            from sqlalchemy.engine import make_url
+            safe_db_url = make_url(settings.database_url).render_as_string(hide_password=True)
+        except Exception:
+            safe_db_url = "configured"
+
         logger.info("Application module: backend.app.main")
+        logger.info("Environment: %s", settings.environment)
+        logger.info("Database URL: %s", safe_db_url)
+        logger.info("Debug mode: %s", settings.debug)
         logger.info("Registered routes: %s", sorted(route.path for route in app.routes))
         logger.info("Starting Finance Advisor API")
-        max_attempts = 5
+        max_attempts = 3
         for attempt in range(1, max_attempts + 1):
             try:
+                logger.info("Database init attempt %s/%s", attempt, max_attempts)
                 check_database_connection()
+                logger.info("Database connection check passed")
                 Base.metadata.create_all(bind=engine)
+                logger.info("Database schema created")
                 _ensure_compatible_schema()
+                logger.info("Schema compatibility check passed")
                 check_database_connection()
+                logger.info("Final database connection check passed")
                 app.state.database_ready = True
-                logger.info("Database initialized")
+                logger.info("✓ Database initialized successfully")
                 return
-            except Exception:
+            except Exception as e:
                 app.state.database_ready = False
                 engine.dispose()
                 if attempt == max_attempts:
-                    logger.exception("Database initialization failed after %s attempts", max_attempts)
+                    logger.warning("Database initialization deferred after %s attempts: %s", max_attempts, e)
                     return
-                logger.warning("Database initialization attempt %s/%s failed; retrying", attempt, max_attempts)
+                logger.warning("Database initialization attempt %s/%s failed: %s; retrying in 2s", attempt, max_attempts, e)
                 time.sleep(2)
 
     @app.on_event("shutdown")
@@ -79,14 +93,21 @@ def create_app() -> FastAPI:
     def health() -> dict:
         """Deployment health check, available without the API version prefix."""
         if not app.state.database_ready:
-            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Database is not ready")
+            try:
+                check_database_connection()
+                Base.metadata.create_all(bind=engine)
+                _ensure_compatible_schema()
+                app.state.database_ready = True
+                logger.info("✓ Database initialized successfully via health recovery")
+            except Exception:
+                raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Database is not ready")
         return {"service": "finance-advisor-ai", "status": "ok"}
 
     @app.get("/__deployment_check", include_in_schema=False)
     def deployment_check() -> dict:
         return {
             "service": "finance-advisor-ai",
-            "version": "f3da701",
+            "version": settings.version,
             "routes": sorted(route.path for route in app.routes),
         }
 
@@ -95,7 +116,10 @@ def create_app() -> FastAPI:
 
 def _ensure_compatible_schema() -> None:
     """Apply small additive changes for installations without Alembic history."""
-    columns = {column["name"] for column in inspect(engine).get_columns("users")}
+    inspector = inspect(engine)
+    if not inspector.has_table("users"):
+        return
+    columns = {column["name"] for column in inspector.get_columns("users")}
     additions = {
         "risk_profile": "VARCHAR(32)",
         "investment_horizon_years": "INTEGER",
