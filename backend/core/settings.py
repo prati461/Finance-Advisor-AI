@@ -36,6 +36,28 @@ class Settings(BaseSettings):
     # --- Redis (optional) ---
     redis_url: str = ""
 
+    # --- Database Connection Parameters (for Render Private Service) ---
+    mysql_host: str = ""
+    mysql_port: int = 3306
+    mysql_user: str = "mysql"
+    mysql_password: str = ""
+    mysql_database: str = "railway"
+
+    @model_validator(mode="before")
+    @classmethod
+    def assemble_database_url(cls, data):
+        if isinstance(data, dict):
+            db_url = data.get("database_url")
+            mysql_host = data.get("mysql_host")
+            if mysql_host and (not db_url or db_url.startswith("sqlite")):
+                from urllib.parse import quote_plus
+                user = quote_plus(str(data.get("mysql_user", "mysql")))
+                password = quote_plus(str(data.get("mysql_password", "")))
+                port = data.get("mysql_port", 3306)
+                db_name = quote_plus(str(data.get("mysql_database", "railway")))
+                data["database_url"] = f"mysql+pymysql://{user}:{password}@{mysql_host}:{port}/{db_name}"
+        return data
+
     @field_validator("debug", mode="before")
     @classmethod
     def parse_debug(cls, value):
@@ -72,7 +94,7 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def prevent_sqlite_in_production(self):
         if self.environment.strip().lower() in {"production", "prod"} and self.database_url.startswith("sqlite"):
-            raise ValueError("SQLite is not allowed when ENVIRONMENT is production; configure Railway MySQL DATABASE_URL.")
+            raise ValueError("SQLite is not allowed when ENVIRONMENT is production; configure Render MySQL DATABASE_URL.")
         return self
 
     model_config = ConfigDict(env_file=".env", env_file_encoding="utf-8")
