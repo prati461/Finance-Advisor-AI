@@ -11,9 +11,14 @@ engine_options = {
     "pool_pre_ping": True,
 }
 
-if settings.database_url.startswith("mysql+pymysql://"):
-    # Railway connections can be dropped while an instance is idle.  Recycle
-    # pooled connections before MySQL's server-side timeout and validate them.
+if settings.database_url.startswith("postgresql"):
+    logger.info("Database: Configuring PostgreSQL connection pooling")
+    engine_options.update(
+        pool_recycle=300,
+        pool_timeout=30,
+    )
+elif settings.database_url.startswith("mysql+pymysql://"):
+    # Recycled pooled connections before MySQL's server-side timeout.
     logger.info("Database: Configuring MySQL connection pooling")
     engine_options.update(
         pool_recycle=300,
@@ -68,4 +73,3 @@ def get_db():
     finally:
         logger.debug("Database: Closing session")
         db.close()
-

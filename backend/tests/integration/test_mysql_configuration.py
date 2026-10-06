@@ -1,8 +1,7 @@
-"""Database URL validation and MySQL schema-creation coverage.
+"""Database URL validation and schema-creation coverage.
 
-Set MYSQL_TEST_DATABASE_URL to run the optional live-database test.  This is
-intended for a disposable MySQL database (for example docker-compose's db
-service), never a shared production database.
+Set MYSQL_TEST_DATABASE_URL or POSTGRES_TEST_DATABASE_URL to run the optional
+live-database tests.
 """
 
 import os
@@ -25,6 +24,14 @@ def test_mysql_url_uses_pymysql_and_encodes_password() -> None:
 def test_mysql_scheme_is_normalized_to_pymysql() -> None:
     settings = Settings(database_url="mysql://finance:password@db.example:3306/finance_advisor")
     assert settings.database_url.startswith("mysql+pymysql://")
+
+
+def test_postgres_url_normalization() -> None:
+    settings = Settings(
+        environment="production",
+        database_url="postgres://finance:p%40ss%3Aword@db.render.internal:5432/finance_advisor",
+    )
+    assert settings.database_url.startswith("postgresql")
 
 
 def test_production_rejects_sqlite() -> None:

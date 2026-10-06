@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     # --- Redis (optional) ---
     redis_url: str = ""
 
-    # --- Database Connection Parameters (for Render Private Service) ---
+    # --- Database Connection Parameters (optional) ---
     mysql_host: str = ""
     mysql_port: int = 3306
     mysql_user: str = "mysql"
@@ -72,9 +72,18 @@ class Settings(BaseSettings):
     @field_validator("database_url")
     @classmethod
     def validate_database_url(cls, value: str) -> str:
-        """Accept SQLAlchemy URLs and select PyMySQL for MySQL connections."""
+        """Accept SQLAlchemy URLs, normalising PostgreSQL and MySQL drivers."""
         value = value.strip()
-        if value.startswith("mysql://"):
+        if value.startswith("postgres://"):
+            value = "postgresql://" + value[len("postgres://"):]
+
+        if value.startswith("postgresql://"):
+            try:
+                import psycopg  # noqa: F401
+                value = "postgresql+psycopg://" + value[len("postgresql://"):]
+            except ImportError:
+                pass
+        elif value.startswith("mysql://"):
             value = f"mysql+pymysql://{value.removeprefix('mysql://')}"
 
         try:
@@ -87,18 +96,17 @@ class Settings(BaseSettings):
 
         if url.drivername.startswith("mysql") and url.drivername != "mysql+pymysql":
             raise ValueError("MySQL DATABASE_URL must use the mysql+pymysql driver.")
-        if not (url.drivername.startswith("mysql") or url.drivername.startswith("sqlite")):
-            raise ValueError("DATABASE_URL must use MySQL (mysql+pymysql) or local SQLite.")
+        if not (url.drivername.startswith("mysql") or url.drivername.startswith("sqlite") or url.drivername.startswith("postgresql")):
+            raise ValueError("DATABASE_URL must use PostgreSQL, MySQL (mysql+pymysql), or local SQLite.")
         return value
 
     @model_validator(mode="after")
     def prevent_sqlite_in_production(self):
         if self.environment.strip().lower() in {"production", "prod"} and self.database_url.startswith("sqlite"):
-            raise ValueError("SQLite is not allowed when ENVIRONMENT is production; configure Render MySQL DATABASE_URL.")
+            raise ValueError("SQLite is not allowed when ENVIRONMENT is production; configure DATABASE_URL.")
         return self
 
     model_config = ConfigDict(env_file=".env", env_file_encoding="utf-8")
 
 
 settings = Settings()
-
