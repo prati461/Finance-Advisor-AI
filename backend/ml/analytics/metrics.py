@@ -162,6 +162,24 @@ class AnalyticsEngine:
         # Compute year-by-year returns
         yearly_returns = self._compute_yearly_returns(df)
 
+        # Build historical price series for chart rendering (up to ~350 points for smooth UI)
+        historical_data = []
+        step = max(1, len(df) // 350)
+        sampled_df = df.iloc[::step]
+        if not df.empty and (sampled_df.empty or sampled_df.index[-1] != df.index[-1]):
+            sampled_df = pd.concat([sampled_df, df.iloc[-1:]]).drop_duplicates()
+        for idx, row in sampled_df.iterrows():
+            historical_data.append(
+                {
+                    "date": idx.strftime("%Y-%m-%d"),
+                    "close": round(float(row.get("close", 0)), 2),
+                    "open": round(float(row.get("open", 0)), 2),
+                    "high": round(float(row.get("high", 0)), 2),
+                    "low": round(float(row.get("low", 0)), 2),
+                    "volume": int(row.get("volume", 0)),
+                }
+            )
+
         return {
             "symbol": info["symbol"],
             "name": info["name"],
@@ -181,6 +199,7 @@ class AnalyticsEngine:
             "fifty_two_week_low": quote.get("fifty_two_week_low"),
             "confidence_score": self.compute_confidence_score(df),
             "yearly_returns": yearly_returns,
+            "historical_data": historical_data,
             "data_points": int(len(df)),
             "start_date": df.index[0].strftime("%Y-%m-%d"),
             "end_date": df.index[-1].strftime("%Y-%m-%d"),

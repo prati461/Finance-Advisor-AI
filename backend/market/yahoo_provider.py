@@ -52,25 +52,41 @@ class YahooFinanceProvider(MarketDataProvider):
         try:
             ticker = self._get_ticker(symbol)
             df = ticker.history(period=period, interval=interval, auto_adjust=True)
+            if (df is None or df.empty) and period == "5y":
+                # Fallback to shorter periods if 5y is unavailable (e.g., recently listed asset)
+                for fallback_p in ["2y", "1y", "max"]:
+                    df = ticker.history(period=fallback_p, interval=interval, auto_adjust=True)
+                    if df is not None and not df.empty:
+                        logger.info("Retrieved %s history using fallback period %s", symbol, fallback_p)
+                        break
+
             if df is None or df.empty:
                 logger.warning("No history returned for %s", symbol)
                 return []
 
+            # Drop unfinalized/empty rows where Close is NaN
+            if "Close" in df.columns:
+                df = df.dropna(subset=["Close"])
+
             records = []
             for idx, row in df.iterrows():
+                close_val = row.get("Close", 0)
+                if pd.isna(close_val) or float(close_val) <= 0:
+                    continue
                 records.append(
                     {
                         "date": idx.strftime("%Y-%m-%d"),
                         "open": round(float(row.get("Open", 0) or 0), 2),
                         "high": round(float(row.get("High", 0) or 0), 2),
                         "low": round(float(row.get("Low", 0) or 0), 2),
-                        "close": round(float(row.get("Close", 0) or 0), 2),
+                        "close": round(float(close_val), 2),
                         "volume": int(row.get("Volume", 0) or 0),
                     }
                 )
 
-            # Cache for 24h
-            market_cache.set(cache_key, records)
+            # Cache non-empty records for 24h
+            if records:
+                market_cache.set(cache_key, records)
             return records
         except Exception as exc:
             logger.error("YahooFinance history error for %s: %s", symbol, exc)

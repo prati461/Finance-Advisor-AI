@@ -413,6 +413,61 @@ def get_market_overview(
     return result
 
 
+@router.get(
+    "/mutual-funds/search",
+    summary="Search Indian Mutual Funds",
+    description="Search Indian mutual funds by scheme name, AMC, or AMFI code.",
+)
+def search_mutual_funds(
+    q: str = "",
+    category: str = "",
+    limit: int = 25,
+    current_user: User = Depends(get_current_user),
+):
+    """Search Indian mutual funds."""
+    from backend.ml.services.mutual_fund_service import mutual_fund_service
+
+    results = mutual_fund_service.search_funds(query=q, category=category if category else None, limit=limit)
+    return {"results": results}
+
+
+@router.get(
+    "/mutual-funds/{scheme_code}",
+    summary="Get Scheme Details and Latest NAV",
+    description="Fetches latest NAV, metadata, and plan type for an AMFI scheme.",
+)
+def get_scheme_details(
+    scheme_code: int,
+    current_user: User = Depends(get_current_user),
+):
+    """Get scheme details and latest NAV."""
+    from backend.ml.services.mutual_fund_service import mutual_fund_service
+
+    details = mutual_fund_service.get_fund_details(scheme_code)
+    if not details:
+        raise HTTPException(status_code=404, detail=f"Scheme {scheme_code} not found")
+    return details
+
+
+@router.get(
+    "/mutual-funds/{scheme_code}/history",
+    summary="Get Scheme Historical NAV and Returns",
+    description="Fetches historical NAV observations and calculates returns/CAGR for the period.",
+)
+def get_scheme_history(
+    scheme_code: int,
+    period: str = "5y",
+    current_user: User = Depends(get_current_user),
+):
+    """Get historical performance and NAV chart series."""
+    from backend.ml.services.mutual_fund_service import mutual_fund_service
+
+    perf = mutual_fund_service.get_historical_performance(scheme_code, period=period)
+    if not perf.get("available"):
+        raise HTTPException(status_code=404, detail=perf.get("message", "Data unavailable"))
+    return perf
+
+
 @router.post(
     "/mutual-fund",
     summary="Mutual Fund Analysis",

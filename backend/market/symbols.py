@@ -354,22 +354,68 @@ MUTUAL_FUNDS: Dict[str, Dict[str, str]] = {
 }
 
 
+COMMON_ALIASES: Dict[str, str] = {
+    "^NSEI": "NIFTY 50",
+    "NIFTY": "NIFTY 50",
+    "NIFTY 50": "NIFTY 50",
+    "NIFTY50": "NIFTY 50",
+    "NSEI": "NIFTY 50",
+    "^BSESN": "SENSEX",
+    "SENSEX": "SENSEX",
+    "BSESN": "SENSEX",
+    "BSE": "SENSEX",
+    "BSE SENSEX": "SENSEX",
+    "^NSEBANK": "BANK NIFTY",
+    "BANK NIFTY": "BANK NIFTY",
+    "BANKNIFTY": "BANK NIFTY",
+    "NIFTYBANK": "BANK NIFTY",
+    "NIFTY BANK": "BANK NIFTY",
+    "NSEBANK": "BANK NIFTY",
+    "GC=F": "GOLD",
+    "GOLD": "GOLD",
+    "GOLD FUTURES": "GOLD",
+    "SI=F": "SILVER",
+    "SILVER": "SILVER",
+    "SILVER FUTURES": "SILVER",
+}
+
+
 def get_symbol_info(query: str) -> Dict[str, str]:
     """Resolve a user query to symbol info (case-insensitive)."""
     q = query.upper().strip()
+
+    # 1. Direct alias check
+    if q in COMMON_ALIASES and COMMON_ALIASES[q] in MARKET_SYMBOLS:
+        return dict(MARKET_SYMBOLS[COMMON_ALIASES[q]])
+
+    # 2. Direct key in MARKET_SYMBOLS
     if q in MARKET_SYMBOLS:
-        return MARKET_SYMBOLS[q]
-    # Try alias matching
+        return dict(MARKET_SYMBOLS[q])
+
+    # 3. Exact match on Yahoo provider symbol (e.g. ^NSEI, GC=F, RELIANCE.NS)
     for key, info in MARKET_SYMBOLS.items():
-        if q in key or key in q or q in info["name"].upper():
-            return info
-    # Treat as raw ticker
-    suffix = ".NS" if not q.endswith((".NS", ".BO")) and not q.startswith("^") else ""
+        if q == info.get("symbol", "").upper():
+            return dict(info)
+
+    # 4. Suffix stripped match (e.g. RELIANCE.NS -> RELIANCE)
+    if q.endswith((".NS", ".BO")):
+        stem = q[:-3]
+        if stem in MARKET_SYMBOLS:
+            return dict(MARKET_SYMBOLS[stem])
+
+    # 5. Fuzzy match on key or full name
+    for key, info in MARKET_SYMBOLS.items():
+        if q == key or q in key or q in info.get("name", "").upper():
+            return dict(info)
+
+    # 6. Treat as raw ticker without corrupting futures or index symbols
+    is_special = q.startswith("^") or "=" in q or q.endswith((".NS", ".BO"))
+    suffix = "" if is_special else ".NS"
     return {
         "symbol": q + suffix,
         "name": q,
-        "asset_class": "stock",
-        "exchange": "NSE" if suffix else "UNKNOWN",
-        "currency": "INR",
+        "asset_class": "commodity" if "=" in q else "index" if q.startswith("^") else "stock",
+        "exchange": "NSE" if suffix == ".NS" else "UNKNOWN",
+        "currency": "USD" if "=" in q else "INR",
     }
 

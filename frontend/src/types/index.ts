@@ -554,6 +554,14 @@ export interface MarketAnalysisResponse {
   fifty_two_week_low?: number | null
   confidence_score: number
   yearly_returns: YearlyReturnPoint[]
+  historical_data?: Array<{
+    date: string
+    close: number
+    open: number
+    high: number
+    low: number
+    volume: number
+  }>
   data_points: number
   start_date?: string
   end_date?: string
@@ -632,7 +640,83 @@ export interface MutualFundsListResponse {
     key: string
     name: string
     category: string
+    scheme_code?: number
+    plan?: string
+    option?: string
+    fund_house?: string
   }>
+}
+
+export interface MutualFundSearchResult {
+  scheme_code: number
+  scheme_name: string
+  plan?: string
+  option?: string
+  fund_house?: string
+  scheme_category?: string
+  latest_nav?: number
+  nav_date?: string
+}
+
+export interface MutualFundSearchResponse {
+  results: MutualFundSearchResult[]
+}
+
+export interface MutualFundDetails {
+  scheme_code: number
+  scheme_name: string
+  fund_house: string
+  scheme_category: string
+  scheme_type: string
+  isin_growth?: string | null
+  plan: string
+  option: string
+  latest_nav: number
+  nav_date: string
+  total_observations: number
+}
+
+export interface MutualFundChartPoint {
+  date: string
+  nav: number
+}
+
+export interface MutualFundHistoryResponse {
+  scheme_code: number
+  scheme_name: string
+  fund_house: string
+  scheme_category: string
+  scheme_type: string
+  plan: string
+  option: string
+  available: boolean
+  selected_period: string
+  start_date: string
+  end_date: string
+  start_nav: number
+  end_nav: number
+  latest_nav: number
+  nav_date: string
+  absolute_change: number
+  percentage_return: number
+  cagr?: number | null
+  volatility: number
+  sharpe_ratio: number
+  max_drawdown: number
+  returns_1m?: number | null
+  returns_6m?: number | null
+  returns_1y?: number | null
+  returns_3y?: number | null
+  returns_5y?: number | null
+  cagr_3y?: number | null
+  cagr_5y?: number | null
+  chart_data: MutualFundChartPoint[]
+  recommendation: string
+  reason: string
+  pros: string[]
+  cons: string[]
+  disclaimer: string
+  message?: string
 }
 
 // Wealth Projection

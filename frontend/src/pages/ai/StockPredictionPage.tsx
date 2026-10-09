@@ -224,7 +224,8 @@ export function StockPredictionPage() {
                       tick={{ fill: isDark ? '#9ca3af' : '#6b7280', fontSize: 12 }}
                       axisLine={false}
                       tickLine={false}
-                      tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}k`}
+                      domain={['auto', 'auto']}
+                      tickFormatter={(value) => `₹${value}`}
                     />
                     <Tooltip
                       contentStyle={{
@@ -248,6 +249,13 @@ export function StockPredictionPage() {
               </div>
             </Card>
           )}
+
+          {/* Forecast Disclaimer */}
+          <Card padding="sm">
+            <div className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+              <strong>Risk Disclosure & Uncertainty:</strong> Machine learning forecasts are based on historical price patterns and statistical models. They are probabilistic estimations and do not represent guaranteed future market prices. Past performance is not indicative of future returns. Always conduct your own research or consult a licensed SEBI financial advisor before making investment decisions.
+            </div>
+          </Card>
         </>
       )}
     </div>

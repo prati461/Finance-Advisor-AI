@@ -146,6 +146,35 @@ export function useMutualFundsList() {
   })
 }
 
+export function useSearchMutualFunds(query: string = '', category: string = '', limit: number = 25) {
+  return useQuery({
+    queryKey: ['ai', 'mutual-funds', 'search', query, category, limit],
+    queryFn: () => aiService.searchMutualFunds(query, category, limit),
+    staleTime: 1000 * 60 * 10,
+    retry: 1,
+  })
+}
+
+export function useMutualFundDetails(schemeCode?: number) {
+  return useQuery({
+    queryKey: ['ai', 'mutual-funds', 'details', schemeCode],
+    queryFn: () => (schemeCode ? aiService.getMutualFundDetails(schemeCode) : null),
+    enabled: !!schemeCode,
+    staleTime: 1000 * 60 * 15,
+    retry: 1,
+  })
+}
+
+export function useMutualFundHistory(schemeCode?: number, period: string = '5y') {
+  return useQuery({
+    queryKey: ['ai', 'mutual-funds', 'history', schemeCode, period],
+    queryFn: () => (schemeCode ? aiService.getMutualFundHistory(schemeCode, period) : null),
+    enabled: !!schemeCode,
+    staleTime: 1000 * 60 * 15,
+    retry: 1,
+  })
+}
+
 export function useWealthProjection() {
   return useMutation({
     mutationFn: (data: WealthProjectionRequest) => aiService.getWealthProjection(data),

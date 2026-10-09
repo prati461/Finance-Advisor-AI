@@ -24,6 +24,9 @@ import type {
   MutualFundRequest,
   MutualFundResponse,
   MutualFundsListResponse,
+  MutualFundSearchResponse,
+  MutualFundDetails,
+  MutualFundHistoryResponse,
   WealthProjectionRequest,
   WealthProjectionData,
   SymbolsResponse,
@@ -113,6 +116,25 @@ export const aiService = {
 
   async listMutualFunds(): Promise<MutualFundsListResponse> {
     const response = await api.post<MutualFundsListResponse>('/ai/mutual-funds')
+    return response.data
+  },
+
+  async searchMutualFunds(q?: string, category?: string, limit: number = 25): Promise<MutualFundSearchResponse> {
+    const response = await api.get<MutualFundSearchResponse>('/ai/mutual-funds/search', {
+      params: { q: q || '', category: category || '', limit },
+    })
+    return response.data
+  },
+
+  async getMutualFundDetails(schemeCode: number): Promise<MutualFundDetails> {
+    const response = await api.get<MutualFundDetails>(`/ai/mutual-funds/${schemeCode}`)
+    return response.data
+  },
+
+  async getMutualFundHistory(schemeCode: number, period: string = '5y'): Promise<MutualFundHistoryResponse> {
+    const response = await api.get<MutualFundHistoryResponse>(`/ai/mutual-funds/${schemeCode}/history`, {
+      params: { period },
+    })
     return response.data
   },
 
